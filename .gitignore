@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+weather-ctrl.conf
+weather-ctrl.log
+weather-ctrl.state.json
