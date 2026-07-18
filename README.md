@@ -1,3 +1,5 @@
+
+<img width="1408" height="768" alt="weather-ctrl" src="https://github.com/user-attachments/assets/6d99c80e-45a8-4eb6-a9d5-62e4240b8b83" />
 # weather-ctrl
 
 Command-line tool to control a remote weather switching device over telnet. Manages 7 channels (0-6) with passthrough, override, and stop functions.
