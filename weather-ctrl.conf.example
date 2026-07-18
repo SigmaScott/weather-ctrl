@@ -1,0 +1,19 @@
+[remote]
+# IP address or hostname of the remote device
+host = 192.168.1.100
+# TCP port (default: 5555)
+port = 5555
+
+[timer]
+# Duration in seconds for passthrough mode (P function)
+duration = 300
+
+[logging]
+# Log file path (optional, defaults to ./weather-ctrl.log)
+# file = /var/log/weather-ctrl.log
+
+[ratelimit]
+# Maximum number of P calls per port within the time window
+max_calls = 5
+# Time window in seconds for rate limiting
+window_seconds = 60
