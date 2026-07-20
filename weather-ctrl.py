@@ -8,7 +8,7 @@ import time
 import signal
 import sys
 import os
-import telnetlib
+import socket
 
 
 def load_config():
@@ -101,65 +101,89 @@ def setup_logging(config):
     logger.addHandler(stderr_handler)
 
 
-_tn = None  # Module-level telnet connection for signal handler access
+_sock = None  # Module-level socket connection for signal handler access
 
 
 def connect(host, port):
-    """Connect to telnet server with retry logic"""
-    global _tn
+    """Connect to remote device via TCP socket with retry logic"""
+    global _sock
     logger = logging.getLogger()
-    
+
     for attempt in range(1, 4):
         try:
             logger.info(f"Attempting connection to {host}:{port} (attempt {attempt}/3)")
-            _tn = telnetlib.Telnet(host, port, timeout=5)
+            sock = socket.create_connection((host, port), timeout=5)
+            sock.settimeout(10)
+            _sock = sock
             logger.info(f"Successfully connected to {host}:{port}")
-            
-            # Consume welcome banner
+
+            # Consume any welcome banner
             try:
                 time.sleep(0.5)
-                _tn.read_very_eager()
+                sock.setblocking(False)
+                try:
+                    sock.recv(4096)
+                except BlockingIOError:
+                    pass
+                sock.setblocking(True)
+                sock.settimeout(10)
             except Exception:
-                pass  # Ignore errors during banner consumption
-            
-            return _tn
+                pass
+
+            return sock
         except Exception as e:
             logger.warning(f"Connection attempt {attempt} failed: {e}")
             if attempt < 3:
                 time.sleep(3)
-    
+
     logger.error(f"Failed to connect to {host}:{port} after 3 attempts")
     sys.exit(1)
 
 
-def disconnect(tn):
-    """Disconnect from telnet server"""
-    global _tn
+def disconnect(sock):
+    """Disconnect from remote device"""
+    global _sock
     logger = logging.getLogger()
-    
+
     try:
         try:
-            tn.write(b"q\r\n")
+            sock.sendall(b"q\r\n")
         except Exception:
             pass
         try:
-            tn.close()
+            sock.close()
         except Exception:
             pass
-        _tn = None
+        _sock = None
         logger.info("Disconnected from remote server")
     except Exception as e:
         logger.warning(f"Error during disconnect: {e}")
 
 
-def send_command(tn, cmd):
-    """Send command to telnet server and get response"""
+def _recv_line(sock, timeout=10):
+    """Read from socket until newline, return decoded string"""
+    sock.settimeout(timeout)
+    buf = b""
+    while True:
+        try:
+            chunk = sock.recv(1)
+            if not chunk:
+                break
+            buf += chunk
+            if buf.endswith(b"\n"):
+                break
+        except socket.timeout:
+            break
+    return buf.decode("ascii", errors="replace").strip()
+
+
+def send_command(sock, cmd):
+    """Send command to remote device and get response"""
     logger = logging.getLogger()
-    
+
     try:
-        tn.write((cmd + "\r\n").encode("ascii"))
-        response = tn.read_until(b"\r\n", timeout=5)
-        response_str = response.decode("ascii").strip()
+        sock.sendall((cmd + "\r\n").encode("ascii"))
+        response_str = _recv_line(sock)
         logger.info(f"Sent: {cmd} | Response: {response_str}")
         return response_str
     except Exception as e:
@@ -167,14 +191,13 @@ def send_command(tn, cmd):
         return None
 
 
-def get_status(tn):
-    """Get status from telnet server and parse JSON"""
+def get_status(sock):
+    """Get status from remote device and parse JSON"""
     logger = logging.getLogger()
-    
+
     try:
-        tn.write(b"s\r\n")
-        response = tn.read_until(b"\r\n", timeout=5)
-        response_str = response.decode("ascii").strip()
+        sock.sendall(b"s\r\n")
+        response_str = _recv_line(sock)
         status = json.loads(response_str)
         logger.info(f"Status: {response_str}")
         return status
@@ -365,11 +388,11 @@ def do_passthrough(port, config):
 
 
 def signal_handler(sig, frame):
-    global _tn
+    global _sock
     logger = logging.getLogger()
     logger.info("Interrupted by user (Ctrl+C)")
-    if _tn is not None:
-        disconnect(_tn)
+    if _sock is not None:
+        disconnect(_sock)
     sys.exit(130)
 
 
