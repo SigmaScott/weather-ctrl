@@ -177,18 +177,16 @@ def _flush_buffer(sock):
         pass
 
 
-def _recv_line(sock, timeout=10):
-    """Read from socket until newline, return decoded string"""
+def _recv_all_lines(sock, timeout=0.5):
+    """Read all available lines from socket until silence"""
     sock.settimeout(timeout)
     buf = b""
     while True:
         try:
-            chunk = sock.recv(1)
+            chunk = sock.recv(4096)
             if not chunk:
                 break
             buf += chunk
-            if buf.endswith(b"\n"):
-                break
         except socket.timeout:
             break
     return buf.decode("ascii", errors="replace").strip()
@@ -200,7 +198,8 @@ def send_command(sock, cmd):
 
     try:
         sock.sendall((cmd + "\r\n").encode("ascii"))
-        response_str = _recv_line(sock)
+        time.sleep(0.1)
+        response_str = _recv_all_lines(sock)
         logger.info(f"Sent: {cmd} | Response: {response_str}")
         return response_str
     except Exception as e:
@@ -213,8 +212,10 @@ def get_status(sock):
     logger = logging.getLogger()
 
     try:
+        _flush_buffer(sock)
         sock.sendall(b"s\r\n")
-        response_str = _recv_line(sock)
+        time.sleep(0.1)
+        response_str = _recv_all_lines(sock)
         status = json.loads(response_str)
         logger.info(f"Status: {response_str}")
         return status
