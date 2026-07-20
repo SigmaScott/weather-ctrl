@@ -160,6 +160,23 @@ def disconnect(sock):
         logger.warning(f"Error during disconnect: {e}")
 
 
+def _flush_buffer(sock):
+    """Drain any stale data from the socket buffer"""
+    try:
+        sock.setblocking(False)
+        while True:
+            try:
+                data = sock.recv(4096)
+                if not data:
+                    break
+            except BlockingIOError:
+                break
+        sock.setblocking(True)
+        sock.settimeout(10)
+    except Exception:
+        pass
+
+
 def _recv_line(sock, timeout=10):
     """Read from socket until newline, return decoded string"""
     sock.settimeout(timeout)
@@ -372,6 +389,8 @@ def do_passthrough(port, config):
     logger.info(f"Starting timer for {duration} seconds on port {port}")
     time.sleep(duration)
     
+    _flush_buffer(tn)
+
     try:
         send_command(tn, f"p {port} 0")
     except Exception:
