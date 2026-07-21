@@ -162,6 +162,7 @@ def disconnect(sock):
 
 def _flush_buffer(sock):
     """Drain any stale data from the socket buffer"""
+    logger = logging.getLogger()
     try:
         sock.setblocking(False)
         while True:
@@ -169,6 +170,7 @@ def _flush_buffer(sock):
                 data = sock.recv(4096)
                 if not data:
                     break
+                logger.debug(f"Flushed stale data: {repr(data)}")
             except BlockingIOError:
                 break
         sock.setblocking(True)
@@ -197,7 +199,9 @@ def send_command(sock, cmd):
     logger = logging.getLogger()
 
     try:
-        sock.sendall((cmd + "\r\n").encode("ascii"))
+        raw_cmd = (cmd + "\r\n").encode("ascii")
+        logger.debug(f"Sending raw bytes: {repr(raw_cmd)}")
+        sock.sendall(raw_cmd)
         time.sleep(0.1)
         response_str = _recv_all_lines(sock)
         logger.info(f"Sent: {cmd} | Response: {response_str}")
