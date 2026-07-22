@@ -3,6 +3,8 @@
 host = 192.168.1.100
 # TCP port (default: 5555)
 port = 5555
+# Delay in seconds between commands sent to device (default: 3)
+cmd_delay = 3
 
 [timer]
 # Duration in seconds for passthrough mode (P function)

@@ -62,6 +62,7 @@ def load_config():
         "remote": {
             "host": config.get("remote", "host"),
             "port": config.getint("remote", "port") if config.has_option("remote", "port") else 5555,
+            "cmd_delay": config.getfloat("remote", "cmd_delay") if config.has_option("remote", "cmd_delay") else 3.0,
         },
         "timer": {
             "duration": config.getint("timer", "duration"),
@@ -102,6 +103,7 @@ def setup_logging(config):
 
 
 _sock = None  # Module-level socket connection for signal handler access
+_cmd_delay = 3.0  # Delay in seconds between commands
 
 
 def connect(host, port):
@@ -205,6 +207,7 @@ def send_command(sock, cmd):
         time.sleep(0.1)
         response_str = _recv_all_lines(sock)
         logger.info(f"Sent: {cmd} | Response: {response_str}")
+        time.sleep(_cmd_delay)
         return response_str
     except Exception as e:
         logger.warning(f"Error sending command '{cmd}': {e}")
@@ -454,6 +457,9 @@ def main():
     # Load config and setup logging
     config = load_config()
     setup_logging(config)
+    
+    global _cmd_delay
+    _cmd_delay = config["remote"]["cmd_delay"]
     
     logger = logging.getLogger()
     logger.info(f"Invoked with function={args.function}, port={args.port}")
