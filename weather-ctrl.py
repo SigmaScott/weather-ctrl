@@ -400,7 +400,6 @@ def do_passthrough(port, config):
     
     # Close stale connection and reconnect fresh before disabling
     disconnect(tn)
-    time.sleep(_cmd_delay)
     tn = connect(config["remote"]["host"], config["remote"]["port"])
 
     response = send_command(tn, f"p {port} 0")
