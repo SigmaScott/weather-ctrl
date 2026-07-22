@@ -424,6 +424,7 @@ def signal_handler(sig, frame):
 
 def main():
     """Main entry point"""
+    time.sleep(5)
     parser = argparse.ArgumentParser(
         description="Weather control CLI for remote telnet device"
     )
