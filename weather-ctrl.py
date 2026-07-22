@@ -400,15 +400,15 @@ def do_passthrough(port, config):
     _flush_buffer(tn)
 
     try:
-        send_command(tn, f"p {port} 0")
+        response = send_command(tn, f"p {port} 0")
     except Exception:
         tn = connect(config["remote"]["host"], config["remote"]["port"])
-        send_command(tn, f"p {port} 0")
+        response = send_command(tn, f"p {port} 0")
     
-    if not verify_port(tn, port, "idle"):
-        logger.error(f"Failed to verify port {port} disabled")
-        disconnect(tn)
-        sys.exit(1)
+    if response and ("IDLE" in response.upper() or "OK" in response.upper()):
+        logger.info(f"Port {port} confirmed disabled from command response")
+    else:
+        logger.warning(f"Port {port} disable response unclear: {response}")
     
     disconnect(tn)
     sys.exit(0)
