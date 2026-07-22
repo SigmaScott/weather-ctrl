@@ -150,6 +150,7 @@ def disconnect(sock):
     try:
         try:
             sock.sendall(b"q\r\n")
+            time.sleep(1)
         except Exception:
             pass
         try:
@@ -397,13 +398,11 @@ def do_passthrough(port, config):
     logger.info(f"Starting timer for {duration} seconds on port {port}")
     time.sleep(duration)
     
-    _flush_buffer(tn)
+    # Close stale connection and reconnect fresh before disabling
+    disconnect(tn)
+    tn = connect(config["remote"]["host"], config["remote"]["port"])
 
-    try:
-        response = send_command(tn, f"p {port} 0")
-    except Exception:
-        tn = connect(config["remote"]["host"], config["remote"]["port"])
-        response = send_command(tn, f"p {port} 0")
+    response = send_command(tn, f"p {port} 0")
     
     if response and ("IDLE" in response.upper() or "OK" in response.upper()):
         logger.info(f"Port {port} confirmed disabled from command response")
